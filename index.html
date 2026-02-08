@@ -1,559 +1,310 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Camera, 
-  Battery, 
-  Database, 
-  AlertTriangle, 
-  Skull, 
-  Ghost,
-  Menu,
-  ShieldAlert,
-  Zap,
-  Volume2,
-  Navigation,
-  Box,
-  Dna,
-  Cpu,
-  Star,
-  Eye,
-  Speaker,
-  Sun,
-  Moon,
-  CloudLightning,
-  Lock,
-  Unlock,
-  Lightbulb,
-  Wind,
-  Activity,
-  Music,
-  Waves,
-  Radio,
-  Power,
-  Flame,
-  CircleDot,
-  Terminal,
-  Bug,
-  Map as MapIcon,
-  ClipboardList,
-  HardDrive,
-  Wrench,
-  Users,
-  Mic2,
-  Settings,
-  ShieldCheck,
-  FileWarning,
-  Disc,
-  Crown,
-  Heart,
-  BarChart3,
-  Info,
-  Flashlight
-} from 'lucide-react';
-
-// --- Multi-Game Data Structure ---
-
-const LOCATIONS = [
-  { 
-    id: 'fnaf1', 
-    name: '1993 Pizzeria', 
-    era: 'Original Location',
-    roomControls: ['Door', 'Light'],
-    rooms: [
-      { id: '1A', name: 'Show Stage', sector: 'Main' },
-      { id: '1B', name: 'Dining Area', sector: 'Main' },
-      { id: '1C', name: 'Pirate Cove', sector: 'Main' },
-      { id: '2A', name: 'West Hall', sector: 'West' },
-      { id: '4A', name: 'East Hall', sector: 'East' },
-      { id: '6',  name: 'Kitchen', sector: 'East' }, 
-    ],
-    animatronics: [
-      { id: 'freddy', name: 'Freddy Fazbear', icon: <Skull />, color: 'text-amber-700', protocol: "Classic AI. Active in dark areas." },
-      { id: 'bonnie', name: 'Bonnie the Bunny', icon: <Zap />, color: 'text-blue-700', protocol: "West Hall specialist." },
-      { id: 'chica', name: 'Chica the Chicken', icon: <CircleDot />, color: 'text-yellow-500', protocol: "East Hall / Kitchen." },
-      { id: 'foxy', name: 'Foxy the Pirate', icon: <AlertTriangle />, color: 'text-red-600', protocol: "Keep eyes on 1C." }
-    ]
-  },
-  { 
-    id: 'fnaf2', 
-    name: '1987 Grand Re-Opening', 
-    era: 'Toy Generation',
-    roomControls: ['Flashlight', 'Security Mask'],
-    rooms: [
-      { id: 'PRIZE', name: 'Prize Corner', sector: 'Main' },
-      { id: 'GAME', name: 'Game Area', sector: 'Main' },
-      { id: 'V_LEFT', name: 'Left Vent', sector: 'Vents' },
-      { id: 'V_RIGHT', name: 'Right Vent', sector: 'Vents' },
-      { id: 'KIDS', name: 'Kids Cove', sector: 'Main' },
-    ],
-    animatronics: [
-      { id: 'puppet', name: 'The Puppet', icon: <Box />, color: 'text-white', protocol: "Wind the Music Box." },
-      { id: 'toy_freddy', name: 'Toy Freddy', icon: <Skull />, color: 'text-amber-500', protocol: "Mask required." },
-      { id: 'mangle', name: 'The Mangle', icon: <Radio />, color: 'text-pink-400', protocol: "Vent specialist." }
-    ]
-  },
-  { 
-    id: 'fnaf3', 
-    name: "Fazbear's Fright", 
-    era: 'Horror Attraction',
-    roomControls: ['Audio Lure', 'Seal Vents', 'System Reboot'],
-    rooms: [
-      { id: 'CAM01', name: 'Main Entry', sector: 'Public' },
-      { id: 'CAM05', name: 'Ventilation', sector: 'Systems' },
-      { id: 'CAM08', name: 'Corridor 08', sector: 'Public' },
-    ],
-    animatronics: [
-      { id: 'springtrap', name: 'Springtrap', icon: <Dna />, color: 'text-green-700', protocol: "Use audio lures." }
-    ]
-  },
-  {
-    id: 'sb',
-    name: 'Mega Pizzaplex',
-    era: 'Glamrock Generation',
-    roomControls: ['Decommission', 'Shatter Sound', 'Fire Protocol'],
-    rooms: [
-      { id: 'ATRIUM', name: 'Main Atrium', sector: 'Public' },
-      { id: 'GOLF', name: 'Monty Golf', sector: 'Attraction' },
-      { id: 'RACE', name: 'Roxy Raceway', sector: 'Attraction' },
-      { id: 'DAYCARE', name: 'Superstar Daycare', sector: 'Public' },
-      { id: 'FAZ_BLAST', name: 'Fazer Blast', sector: 'Attraction' },
-      { id: 'PARTS', name: 'Parts & Service', sector: 'Staff' },
-      { id: 'KITCHEN', name: 'Loading Dock', sector: 'Staff' },
-    ],
-    animatronics: [
-      { id: 'glam_freddy', name: 'Glamrock Freddy', icon: <Crown />, color: 'text-orange-500', protocol: "Allied unit. Safe for pilot mode." },
-      { id: 'glam_chica', name: 'Glamrock Chica', icon: <Heart />, color: 'text-pink-300', protocol: "High garbage attraction. Deploy lure." },
-      { id: 'monty', name: 'Montgomery Gator', icon: <Flame />, color: 'text-green-500', protocol: "Berserker mode. Aggressive jumping." },
-      { id: 'roxy', name: 'Roxanne Wolf', icon: <Star />, color: 'text-purple-500', protocol: "Wall-hack vision. Hide in non-transparent objects." },
-      { id: 'sun_moon', name: 'The Daycare Attendant', dynamic: true, protocol: "" },
-      { id: 'vanny', name: 'Vanny', icon: <Bug />, color: 'text-white', protocol: "Visual glitching indicates proximity." }
-    ]
-  }
-];
-
-export default function App() {
-  const [booted, setBooted] = useState(false);
-  const [currentView, setCurrentView] = useState('menu'); 
-  const [activeLocIdx, setActiveLocIdx] = useState(0);
-  const [activeCam, setActiveCam] = useState(LOCATIONS[0].rooms[0].id);
-  const [selectedControlRoom, setSelectedControlRoom] = useState(LOCATIONS[0].rooms[0].id);
-  const [battery, setBattery] = useState(100);
-  const [time, setTime] = useState(12); 
-  const [animatronicPositions, setAnimatronicPositions] = useState({});
-  const [staticNoise, setStaticNoise] = useState(0.1);
-  const [roomStates, setRoomStates] = useState({}); 
-  const [camLight, setCamLight] = useState(false);
-  const [logs, setLogs] = useState([
-    { id: 'log-1', time: '12:00 AM', msg: 'System initialized. Security protocols active.', type: 'info' },
-  ]);
-
-  const activeLoc = LOCATIONS[activeLocIdx];
-
-  // Helper to get dynamic properties for Daycare Attendant
-  const getDaycareAttendantState = () => {
-    if (camLight) {
-      return {
-        name: "Sundrop",
-        icon: <Sun />,
-        color: "text-yellow-400",
-        protocol: "Lights ON. Entity is stable and compliant."
-      };
-    } else {
-      return {
-        name: "Moondrop",
-        icon: <Moon />,
-        color: "text-zinc-400",
-        protocol: "Lights OFF. Entity is hostile. High threat detected."
-      };
-    }
-  };
-
-  // Logic to calculate power usage based on current activity
-  const getPowerUsage = () => {
-    let usage = 1.0; 
-    if (currentView === 'cams') usage += 0.8;
-    if (currentView === 'map') usage += 0.4;
-    if (camLight) usage += 1.5; 
-    
-    Object.keys(roomStates).forEach(roomId => {
-      const room = roomStates[roomId];
-      if (room) {
-        Object.values(room).forEach(val => { if (val) usage += 0.5; });
-      }
-    });
-    return parseFloat(usage.toFixed(1));
-  };
-
-  // Initial Boot Sequence
-  useEffect(() => {
-    const timer = setTimeout(() => setBooted(true), 2500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Update State when Location changes
-  useEffect(() => {
-    if (!activeLoc) return;
-    
-    const initial = {};
-    activeLoc.animatronics.forEach(a => {
-      initial[a.id] = activeLoc.rooms[Math.floor(Math.random() * activeLoc.rooms.length)].id;
-    });
-    
-    setAnimatronicPositions(initial);
-    setActiveCam(activeLoc.rooms[0].id);
-    setSelectedControlRoom(activeLoc.rooms[0].id);
-    setRoomStates({});
-    setCamLight(false);
-    setBattery(100);
-    setTime(12);
-  }, [activeLocIdx]);
-
-  // Game Loop
-  useEffect(() => {
-    if (!booted || battery <= 0) return;
-
-    const timer = setInterval(() => {
-      setTime(t => (t === 12 ? 1 : t + 1));
-    }, 60000);
-
-    const drain = setInterval(() => {
-      const usage = getPowerUsage();
-      setBattery(prev => {
-        const newVal = prev - (usage * 0.05);
-        return newVal < 0 ? 0 : newVal;
-      });
-    }, 1000);
-
-    const ai = setInterval(() => {
-      activeLoc.animatronics.forEach(anim => {
-        if (Math.random() > 0.7) {
-          const nextRoom = activeLoc.rooms[Math.floor(Math.random() * activeLoc.rooms.length)].id;
-          setAnimatronicPositions(prev => ({ 
-            ...prev, 
-            [anim.id]: nextRoom 
-          }));
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Faz-Link Security Interface</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: black;
+            color: #22c55e;
+            font-family: 'VT323', monospace;
+            overflow: hidden;
+            user-select: none;
+            touch-action: manipulation;
         }
-      });
-    }, 6000);
-
-    return () => { 
-      clearInterval(timer); 
-      clearInterval(ai); 
-      clearInterval(drain);
-    };
-  }, [booted, activeLocIdx, battery, currentView, roomStates, camLight]);
-
-  const triggerStatic = () => {
-    setStaticNoise(0.8);
-    setTimeout(() => setStaticNoise(0.1), 400);
-  };
-
-  const toggleRoomControl = (roomId, control) => {
-    if (battery <= 0) return;
-    setRoomStates(prev => ({
-      ...prev,
-      [roomId]: { 
-        ...prev[roomId], 
-        [control]: !prev[roomId]?.[control] 
-      }
-    }));
-    triggerStatic();
-  };
-
-  const navItems = [
-    { id: 'menu', icon: <Menu />, label: 'Hub' },
-    { id: 'cams', icon: <Camera />, label: 'Cams' },
-    { id: 'map', icon: <MapIcon />, label: 'Map' },
-    { id: 'controls', icon: <ShieldAlert />, label: 'Link' },
-    { id: 'database', icon: <Database />, label: 'Data' },
-    { id: 'logs', icon: <ClipboardList />, label: 'Logs' },
-  ];
-
-  if (!booted || battery <= 0) {
-    return (
-      <div className="fixed inset-0 bg-black text-green-500 font-mono flex flex-col items-center justify-center p-6 text-center">
-        {!booted ? (
-          <div className="animate-pulse flex flex-col items-center">
-            <div className="mb-4 text-3xl font-bold uppercase tracking-[0.2em]">FAZ-OS BOOTING</div>
-            <div className="w-64 h-1 bg-zinc-900 border border-green-900 overflow-hidden">
-              <div className="h-full bg-green-500" style={{ width: '100%', transition: 'width 2.5s linear' }}></div>
-            </div>
-          </div>
-        ) : (
-          <div className="animate-in fade-in zoom-in duration-500">
-            <div className="text-red-600 text-5xl md:text-7xl font-black mb-4 animate-pulse uppercase">Offline</div>
-            <div className="text-zinc-500 text-xs mb-8 uppercase tracking-widest">Power Grid Failure - System Lockdown</div>
-            <button 
-              onClick={() => { setBattery(100); setTime(12); }} 
-              className="border-2 border-green-500 px-8 py-4 uppercase text-sm font-bold hover:bg-green-500 hover:text-black transition-colors"
-            >
-              Restart Terminal
-            </button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black font-mono text-green-500 flex flex-col overflow-hidden select-none touch-none">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
-        .font-mono { font-family: 'VT323', monospace; }
-        .crt::after { 
-          content: " "; 
-          display: block; 
-          position: absolute; 
-          inset: 0; 
-          background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%), 
-                      linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02)); 
-          z-index: 100; 
-          background-size: 100% 2px, 3px 100%; 
-          pointer-events: none; 
+        .crt::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 100;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
         }
-      `}</style>
-      
-      <div className="crt fixed inset-0 pointer-events-none z-[100]" />
-      
-      <header className="h-14 border-b border-green-900 bg-black flex justify-between items-center px-4 shrink-0 z-50">
-        <div className="flex items-center gap-3 overflow-hidden">
-          <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse shrink-0" />
-          <h1 className="text-xs md:text-lg font-bold uppercase tracking-widest truncate">{activeLoc.name}</h1>
-        </div>
-        <div className="flex gap-4 text-sm md:text-xl font-bold shrink-0">
-          <span>{time}:00 AM</span>
-          <div className="flex flex-col items-end">
-             <span className={battery < 20 ? 'text-red-500 animate-pulse' : ''}>{Math.floor(battery)}%</span>
-             <span className="text-[8px] opacity-50 uppercase tracking-tighter">Usage: {getPowerUsage()} kw</span>
-          </div>
-        </div>
-      </header>
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(34, 197, 94, 0.1);
+            position: absolute;
+            top: 0;
+            z-index: 101;
+            animation: scanline 8s linear infinite;
+        }
+        @keyframes scanline { 0% { top: 0; } 100% { top: 100%; } }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #14532d; }
+        
+        .nav-active { color: white !important; text-shadow: 0 0 8px white; border-color: white !important; }
+        
+        /* Animatronic Symbol Styling */
+        .symbol-large {
+            font-size: clamp(5rem, 15vw, 10rem);
+            line-height: 1;
+            transition: all 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="h-screen w-screen relative overflow-hidden"></div>
 
-      <main className="flex-1 relative flex flex-col md:flex-row overflow-hidden">
-        <nav className="fixed bottom-0 left-0 right-0 h-16 md:h-auto md:relative md:w-20 border-t md:border-t-0 md:border-r border-green-900 bg-black z-50 flex md:flex-col justify-around md:justify-start items-center md:py-8 md:gap-8 overflow-x-auto">
-          {navItems.map((item) => (
-            <button 
-              key={item.id}
-              onClick={() => {
-                if (item.id !== 'cams') setCamLight(false);
-                setCurrentView(item.id);
-              }} 
-              className={`flex flex-col items-center justify-center p-2 min-w-[60px] md:min-w-0 transition-all active:scale-95 ${currentView === item.id ? 'text-white' : 'text-green-900'}`}
-            >
-              <div className="w-6 h-6">{item.icon}</div>
-              <span className="text-[8px] uppercase font-bold mt-1 md:hidden">{item.label}</span>
-            </button>
-          ))}
-        </nav>
+    <script type="module">
+        import { h, render } from 'https://esm.sh/preact';
+        import { useState, useEffect } from 'https://esm.sh/preact/hooks';
+        import htm from 'https://esm.sh/htm';
 
-        <div className="flex-1 relative bg-black overflow-y-auto pb-20 md:pb-0 scroll-smooth">
-          <div 
-            className="absolute inset-0 pointer-events-none z-20 transition-opacity duration-75" 
-            style={{ backgroundColor: 'white', opacity: staticNoise > 0.1 ? 0.2 : 0 }} 
-          />
+        const html = htm.bind(h);
+        const apiKey = ""; 
 
-          {currentView === 'menu' && (
-            <div className="p-6 md:p-12 animate-in fade-in slide-in-from-bottom-4">
-              <h2 className="text-3xl md:text-6xl font-black uppercase mb-8 tracking-tighter text-green-500">Location Selector</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {LOCATIONS.map((loc, idx) => (
-                  <button 
-                    key={loc.id} 
-                    onClick={() => { setActiveLocIdx(idx); setCurrentView('cams'); }} 
-                    className={`p-6 border-2 text-left transition-all active:translate-y-1 ${activeLocIdx === idx ? 'bg-green-900/40 border-green-400' : 'border-green-900 hover:border-green-700'}`}
-                  >
-                    <div className="text-xl md:text-2xl font-black uppercase">{loc.name}</div>
-                    <div className="text-[9px] text-green-700 font-bold uppercase tracking-widest mt-1">{loc.era}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        const LOCATIONS = [
+            { 
+                id: 'sb', 
+                name: 'Mega Pizzaplex', 
+                era: 'Glamrock Generation',
+                rooms: [
+                    { id: 'ATRIUM', name: 'Main Atrium' },
+                    { id: 'DAYCARE', name: 'Superstar Daycare' },
+                    { id: 'RACE', name: 'Roxy Raceway' },
+                    { id: 'GOLF', name: 'Monty Golf' },
+                    { id: 'PARTS', name: 'Parts & Service' }
+                ],
+                animatronics: [
+                    { id: 'freddy', name: 'Glamrock Freddy', color: '#f97316', icon: '👑', protocol: "Allied unit. Safe for pilot mode." },
+                    { id: 'chica', name: 'Glamrock Chica', color: '#f472b6', icon: '💖', protocol: "Garbage attraction high. Deploy lure." },
+                    { id: 'monty', name: 'Montgomery Gator', color: '#22c55e', icon: '🔥', protocol: "Aggressive jumping. High threat." },
+                    { id: 'sun_moon', name: 'Daycare Attendant', dynamic: true }
+                ]
+            },
+            { 
+                id: 'fnaf1', 
+                name: 'Fazbear\'s (1993)', 
+                era: 'Legacy Branch',
+                rooms: [
+                    { id: '1A', name: 'Show Stage' },
+                    { id: '1B', name: 'Dining Area' },
+                    { id: '1C', name: 'Pirate Cove' },
+                    { id: '2A', name: 'West Hall' },
+                    { id: '4A', name: 'East Hall' }
+                ],
+                animatronics: [
+                    { id: 'freddy', name: 'Freddy Fazbear', color: '#92400e', icon: '🐻', protocol: "Classic AI. Active in dark areas." },
+                    { id: 'bonnie', name: 'Bonnie', color: '#1d4ed8', icon: '🎸', protocol: "West Hall specialist." },
+                    { id: 'chica', name: 'Chica', color: '#eab308', icon: '🐥', protocol: "East Hall / Kitchen." },
+                    { id: 'foxy', name: 'Foxy', color: '#ef4444', icon: '🦊', protocol: "Keep eyes on 1C." }
+                ]
+            }
+        ];
 
-          {currentView === 'cams' && (
-            <div className="h-full flex flex-col lg:flex-row overflow-hidden animate-in fade-in">
-              <div className={`flex-1 relative bg-zinc-950 min-h-[300px] flex items-center justify-center overflow-hidden transition-colors duration-500 ${camLight ? 'bg-zinc-800' : 'bg-black'}`}>
-                <div className={`absolute inset-0 pointer-events-none z-10 transition-opacity duration-300 ${camLight ? 'opacity-20 bg-white' : 'opacity-0 bg-black'}`} />
-                
-                <div className="absolute top-4 left-4 z-30 bg-black/90 p-3 border-2 border-green-900">
-                  <div className="text-xl md:text-3xl font-black text-green-400">CAM {activeCam}</div>
-                  <div className="text-[10px] text-green-700 uppercase">{activeLoc.rooms.find(r => r.id === activeCam)?.name}</div>
-                </div>
+        function App() {
+            const [booted, setBooted] = useState(false);
+            const [view, setView] = useState('menu');
+            const [locIdx, setLocIdx] = useState(0);
+            const [activeCam, setActiveCam] = useState('');
+            const [battery, setBattery] = useState(100);
+            const [time, setTime] = useState(12);
+            const [roomLights, setRoomLights] = useState(false);
+            const [positions, setPositions] = useState({});
 
-                <div className="absolute top-4 right-4 z-30 flex gap-2">
-                   <button 
-                    onClick={() => setCamLight(!camLight)}
-                    className={`p-3 border-2 transition-all flex items-center gap-2 font-black uppercase text-xs ${camLight ? 'bg-yellow-500 border-yellow-200 text-black shadow-[0_0_15px_rgba(234,179,8,0.5)]' : 'bg-black border-green-900 text-green-900'}`}
-                   >
-                     <Flashlight size={16} />
-                     {camLight ? 'Light ON' : 'Light OFF'}
-                   </button>
-                </div>
-                
-                <div className="flex flex-wrap gap-12 justify-center p-12 relative z-20">
-                  {activeLoc.animatronics.filter(a => animatronicPositions[a.id] === activeCam).map(a => {
-                    const data = a.id === 'sun_moon' ? getDaycareAttendantState() : { 
-                      name: a.name, 
-                      icon: a.icon, 
-                      color: a.color 
-                    };
+            const activeLoc = LOCATIONS[locIdx];
+
+            useEffect(() => {
+                setTimeout(() => setBooted(true), 2000);
+            }, []);
+
+            useEffect(() => {
+                const pos = {};
+                activeLoc.animatronics.forEach(a => {
+                    pos[a.id] = activeLoc.rooms[Math.floor(Math.random() * activeLoc.rooms.length)].id;
+                });
+                setPositions(pos);
+                setActiveCam(activeLoc.rooms[0].id);
+                setRoomLights(false);
+            }, [locIdx]);
+
+            useEffect(() => {
+                if (!booted || battery <= 0) return;
+                const interval = setInterval(() => {
+                    let drain = 0.04;
+                    if (view === 'cams') drain += 0.06;
+                    if (roomLights) drain += 0.3;
+                    setBattery(b => Math.max(0, b - drain));
                     
-                    return (
-                      <div key={a.id} className={`${data.color} flex flex-col items-center transition-all duration-700 ${camLight ? 'scale-110 opacity-100 blur-none' : 'scale-90 opacity-40 blur-sm animate-pulse'}`}>
-                        <div className="transform scale-[4] mb-12">{data.icon}</div>
-                        <div className="bg-black/80 px-3 py-1 border border-current text-[10px] font-black uppercase tracking-widest">{data.name}</div>
-                      </div>
-                    );
-                  })}
-                  {activeLoc.animatronics.filter(a => animatronicPositions[a.id] === activeCam).length === 0 && (
-                    <div className="text-green-900 opacity-20 flex flex-col items-center font-black">
-                      <Skull size={100} className="mb-4" />
-                      SIGNAL CLEAR
+                    // Small chance to move AI
+                    if (Math.random() > 0.9) {
+                        const ids = Object.keys(positions);
+                        const randomId = ids[Math.floor(Math.random() * ids.length)];
+                        const randomRoom = activeLoc.rooms[Math.floor(Math.random() * activeLoc.rooms.length)].id;
+                        setPositions(prev => ({ ...prev, [randomId]: randomRoom }));
+                    }
+                }, 1000);
+                return () => clearInterval(interval);
+            }, [booted, battery, view, roomLights, positions]);
+
+            const getDaycareState = () => {
+                return roomLights 
+                    ? { name: 'Sundrop', color: '#fbbf24', icon: '☀️', protocol: "Lights ON. Entity is stable." }
+                    : { name: 'Moondrop', color: '#4f46e5', icon: '🌙', protocol: "Lights OFF. Entity is hostile." };
+            };
+
+            if (!booted) return html`
+                <div class="h-full flex flex-col items-center justify-center p-6 text-center bg-black">
+                    <div class="text-3xl animate-pulse tracking-[0.4em] mb-4 text-green-500 uppercase">Connecting...</div>
+                    <div class="w-64 h-1 bg-zinc-900 overflow-hidden">
+                        <div class="h-full bg-green-500 animate-[width_2s_linear]" style="width:100%"></div>
                     </div>
-                  )}
                 </div>
+            `;
 
-                <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_150px_rgba(0,0,0,0.9)] z-20" />
-              </div>
-
-              <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-green-900 bg-black p-4 overflow-y-auto">
-                <h3 className="text-[10px] font-black text-green-900 uppercase tracking-widest mb-4">Camera Matrix</h3>
-                <div className="grid grid-cols-3 lg:grid-cols-2 gap-2">
-                  {activeLoc.rooms.map(r => (
-                    <button 
-                      key={r.id} 
-                      onClick={() => { triggerStatic(); setActiveCam(r.id); }} 
-                      className={`py-3 text-xs border font-black transition-colors ${activeCam === r.id ? 'bg-green-900 border-green-400 text-white' : 'border-green-900 text-green-800 hover:text-green-600'}`}
-                    >
-                      {r.id}
-                    </button>
-                  ))}
+            if (battery <= 0) return html`
+                <div class="h-full flex flex-col items-center justify-center text-red-600 bg-black p-6 text-center">
+                    <div class="text-6xl font-black italic mb-2">SYSTEM DEAD</div>
+                    <div class="text-sm uppercase tracking-widest opacity-50 mb-10">Power Core Depleted</div>
+                    <button onClick=${() => window.location.reload()} class="border-2 border-red-600 px-10 py-4 font-bold hover:bg-red-600 hover:text-black transition-all">HARD RESET</button>
                 </div>
-              </div>
-            </div>
-          )}
+            `;
 
-          {currentView === 'map' && (
-            <div className="p-6 md:p-12 animate-in fade-in">
-              <h2 className="text-3xl font-black uppercase mb-8 flex items-center gap-3">
-                <MapIcon /> Tactical Layout
-              </h2>
-              <div className="relative aspect-square md:aspect-video w-full max-w-4xl mx-auto border-2 border-green-900 bg-zinc-950 p-4 grid grid-cols-4 grid-rows-3 gap-2">
-                {activeLoc.rooms.map((room, idx) => (
-                  <div 
-                    key={room.id}
-                    className={`border border-green-900/40 relative flex items-center justify-center text-[10px] font-bold transition-all ${activeCam === room.id ? 'bg-green-500/10 border-green-500' : 'bg-black/40'}`}
-                  >
-                    <span className="opacity-30">{room.id}</span>
-                    <div className="absolute top-1 right-1 flex gap-1">
-                      {activeLoc.animatronics.filter(a => animatronicPositions[a.id] === room.id).map(a => {
-                        const data = a.id === 'sun_moon' ? getDaycareAttendantState() : { icon: a.icon, color: a.color };
-                        return <div key={a.id} className={`${data.color} animate-pulse`}>{data.icon}</div>;
-                      })}
-                    </div>
-                    {activeCam === room.id && <div className="absolute inset-0 border-2 border-green-400 animate-ping opacity-20" />}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {currentView === 'controls' && (
-            <div className="p-6 md:p-8 space-y-6 animate-in fade-in">
-              <h2 className="text-2xl md:text-4xl font-black uppercase flex items-center gap-3">
-                <ShieldAlert className="text-red-600" /> Remote Overrides
-              </h2>
-              <div className="flex flex-col lg:flex-row gap-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2 flex-1">
-                  {activeLoc.rooms.map((room) => (
-                    <button 
-                      key={room.id} 
-                      onClick={() => setSelectedControlRoom(room.id)}
-                      className={`p-4 border-2 text-left transition-all ${selectedControlRoom === room.id ? 'bg-green-900/30 border-green-400 text-green-400' : 'border-green-900 text-green-900'}`}
-                    >
-                      <div className="text-lg font-black">{room.id}</div>
-                      <div className="text-[9px] uppercase font-bold truncate">{room.name}</div>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="w-full lg:w-96 bg-zinc-950 border-2 border-green-900 p-6 space-y-4 shadow-2xl">
-                  <div className="border-b border-green-900 pb-2 mb-4">
-                    <div className="text-3xl font-black text-green-400 uppercase tracking-tighter">{selectedControlRoom}</div>
-                    <div className="text-[10px] text-green-800 uppercase font-bold">Override Console Enabled</div>
-                  </div>
-                  {activeLoc.roomControls.map((control) => (
-                    <button 
-                      key={control}
-                      onClick={() => toggleRoomControl(selectedControlRoom, control)}
-                      className={`w-full p-5 flex items-center justify-between border-2 font-black uppercase transition-all active:scale-95 ${roomStates[selectedControlRoom]?.[control] ? 'bg-red-900/20 border-red-600 text-red-500 shadow-[0_0_15px_rgba(220,38,38,0.2)]' : 'border-green-900 text-green-900 hover:bg-green-900/10'}`}
-                    >
-                      <span>{control}</span>
-                      <Power size={20} className={roomStates[selectedControlRoom]?.[control] ? 'animate-pulse' : ''} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {currentView === 'database' && (
-            <div className="p-6 md:p-12 animate-in fade-in">
-              <h2 className="text-3xl font-black uppercase mb-8 flex items-center gap-3 text-green-400">
-                <Database /> Animatronic Manifest
-              </h2>
-              <div className="space-y-4">
-                {activeLoc.animatronics.map((a) => {
-                  const data = a.id === 'sun_moon' ? getDaycareAttendantState() : { 
-                    name: a.name, 
-                    icon: a.icon, 
-                    color: a.color, 
-                    protocol: a.protocol 
-                  };
-
-                  return (
-                    <div key={a.id} className="border-2 border-green-900 p-6 flex flex-col md:flex-row gap-6 bg-zinc-950 hover:border-green-400 transition-colors">
-                      <div className={`${data.color} transform scale-[3] md:w-20 flex justify-center py-4`}>{data.icon}</div>
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-3">
-                           <h3 className={`text-2xl font-black uppercase ${data.color}`}>{data.name}</h3>
-                           {a.id === 'sun_moon' && <span className="text-[10px] border border-zinc-800 px-2 text-zinc-600">STATE: {camLight ? 'STABLE' : 'UNSTABLE'}</span>}
+            return html`
+                <div class="h-full flex flex-col crt overflow-hidden relative">
+                    <div class="scanline"></div>
+                    
+                    <!-- Top Bar -->
+                    <header class="h-14 border-b border-green-900 flex items-center justify-between px-6 bg-black z-50 shrink-0">
+                        <div class="flex items-center gap-4">
+                            <div class="w-3 h-3 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_red]"></div>
+                            <div class="text-xl font-bold tracking-tighter uppercase italic truncate">Faz-Link // ${activeLoc.name}</div>
                         </div>
-                        <div className="text-green-800 text-xs uppercase tracking-tighter">Current Sector: {animatronicPositions[a.id] || 'UNKNOWN'}</div>
-                        <div className="text-green-600/80 text-sm italic">“{data.protocol}”</div>
-                      </div>
-                      <div className="md:w-32 flex items-end md:justify-end">
-                        <div className="text-[10px] font-bold border border-green-900 px-2 py-1 uppercase text-green-900">ID: FAZ-{a.id.toUpperCase()}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                        <div class="flex gap-8 text-2xl font-black">
+                            <span>${time}:00 AM</span>
+                            <span class="${battery < 20 ? 'text-red-500 animate-pulse' : ''}">${Math.floor(battery)}%</span>
+                        </div>
+                    </header>
 
-          {currentView === 'logs' && (
-            <div className="p-6 h-full flex flex-col animate-in fade-in">
-              <h2 className="text-2xl font-black uppercase mb-6 flex items-center gap-3">
-                <ClipboardList /> System Stream
-              </h2>
-              <div className="flex-1 bg-zinc-950 border-2 border-green-900 p-4 overflow-y-auto space-y-2 font-mono custom-scrollbar">
-                {logs.map((log) => (
-                  <div key={log.id} className="text-[10px] sm:text-xs font-bold uppercase border-b border-green-900/10 pb-1">
-                    <span className="text-green-900 mr-4">[{log.time}]</span>
-                    <span className="text-green-600 opacity-80">{">>>"} {log.msg}</span>
-                  </div>
-                ))}
-                <div className="text-[10px] text-green-900/40 animate-pulse uppercase tracking-widest mt-4">Monitoring localized data packets...</div>
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
-      
-      <div className="h-6 bg-green-900/10 border-t border-green-900/20 flex items-center justify-center md:hidden">
-        <span className="text-[8px] uppercase tracking-widest text-green-900 font-bold">Secure Connection: Active</span>
-      </div>
-    </div>
-  );
-}
+                    <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+                        <!-- Left Navigation -->
+                        <nav class="order-2 md:order-1 h-16 md:h-auto md:w-20 border-t md:border-t-0 md:border-r border-green-900 flex md:flex-col justify-around md:justify-center items-center md:gap-12 bg-black z-50 shrink-0">
+                            <button onClick=${() => setView('menu')} class="p-3 border-b-2 border-transparent transition-all ${view === 'menu' ? 'nav-active' : 'text-green-900'}">
+                                <div class="text-[10px] font-bold uppercase">Nodes</div>
+                            </button>
+                            <button onClick=${() => setView('cams')} class="p-3 border-b-2 border-transparent transition-all ${view === 'cams' ? 'nav-active' : 'text-green-900'}">
+                                <div class="text-[10px] font-bold uppercase">Cams</div>
+                            </button>
+                            <button onClick=${() => setView('data')} class="p-3 border-b-2 border-transparent transition-all ${view === 'data' ? 'nav-active' : 'text-green-900'}">
+                                <div class="text-[10px] font-bold uppercase">Data</div>
+                            </button>
+                        </nav>
+
+                        <!-- Main Screen Area -->
+                        <main class="order-1 md:order-2 flex-1 relative bg-black overflow-hidden">
+                            
+                            ${view === 'menu' && html`
+                                <div class="p-8 md:p-16 animate-in fade-in h-full overflow-y-auto">
+                                    <h2 class="text-5xl md:text-8xl font-black uppercase italic mb-12 text-green-500">Node Hub</h2>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl">
+                                        ${LOCATIONS.map((l, i) => html`
+                                            <button onClick=${() => { setLocIdx(i); setView('cams'); }} 
+                                                class="p-8 border-2 transition-all ${locIdx === i ? 'border-green-400 bg-green-950/20 text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.3)]' : 'border-green-900 text-green-900 hover:border-green-700'} text-left group">
+                                                <div class="text-3xl font-bold uppercase group-hover:text-green-500">${l.name}</div>
+                                                <div class="text-xs opacity-50 uppercase tracking-[0.3em] mt-2">${l.era}</div>
+                                            </button>
+                                        `)}
+                                    </div>
+                                </div>
+                            `}
+
+                            ${view === 'cams' && html`
+                                <div class="h-full flex flex-col lg:flex-row overflow-hidden">
+                                    <div class="flex-1 relative flex flex-col items-center justify-center transition-colors duration-700 ${roomLights ? 'bg-zinc-800' : 'bg-black'}">
+                                        
+                                        <!-- Room UI -->
+                                        <div class="absolute top-6 left-6 z-20 bg-black/90 border-2 border-green-900 p-4 shadow-2xl">
+                                            <div class="text-4xl md:text-6xl font-black text-green-400 italic leading-none">${activeCam}</div>
+                                            <div class="text-xs uppercase opacity-40 mt-1">${activeLoc.rooms.find(r => r.id === activeCam)?.name}</div>
+                                        </div>
+
+                                        <!-- Light Toggle -->
+                                        <button onClick=${() => setRoomLights(!roomLights)} 
+                                            class="absolute top-6 right-6 z-20 border-2 px-6 py-3 uppercase font-bold text-sm transition-all active:scale-95 ${roomLights ? 'bg-yellow-400 border-yellow-200 text-black shadow-[0_0_20px_rgba(250,204,21,0.4)]' : 'border-green-900 text-green-900 bg-black/60'}">
+                                            Light: ${roomLights ? 'ON' : 'OFF'}
+                                        </button>
+
+                                        <!-- Animatronic Presence -->
+                                        <div class="flex flex-wrap gap-16 items-center justify-center p-12 relative z-10 w-full">
+                                            ${activeLoc.animatronics.filter(a => positions[a.id] === activeCam).map(a => {
+                                                const s = a.dynamic ? getDaycareState() : a;
+                                                return html`
+                                                    <div class="flex flex-col items-center transition-all duration-1000 ${roomLights ? 'opacity-100 scale-100' : 'opacity-10 grayscale blur-sm scale-75 animate-pulse'}">
+                                                        <div class="symbol-large mb-4 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]" style="color: ${s.color}">${s.icon}</div>
+                                                        <div class="text-xs font-bold uppercase tracking-[0.4em] border-2 py-1 px-4 bg-black/80" style="color: ${s.color}; border-color: ${s.color}">
+                                                            ${s.name}
+                                                        </div>
+                                                    </div>
+                                                `;
+                                            })}
+                                            ${activeLoc.animatronics.filter(a => positions[a.id] === activeCam).length === 0 && html`
+                                                <div class="text-green-900/10 text-7xl md:text-[10rem] font-black italic text-center select-none pointer-events-none">NO SIGNAL</div>
+                                            `}
+                                        </div>
+                                        
+                                        <!-- HUD Overlays -->
+                                        <div class="absolute inset-0 pointer-events-none shadow-[inset_0_0_200px_rgba(0,0,0,1)] z-0"></div>
+                                        <div class="absolute inset-0 pointer-events-none border-[40px] border-black/20 z-0"></div>
+                                    </div>
+
+                                    <!-- Camera Selector -->
+                                    <div class="lg:w-72 border-t lg:border-t-0 lg:border-l border-green-900 p-6 bg-black overflow-x-auto lg:overflow-y-auto shrink-0 shadow-2xl">
+                                        <div class="text-xs font-bold uppercase tracking-[0.5em] text-green-900 mb-6 hidden lg:block">Camera Matrix</div>
+                                        <div class="flex lg:grid lg:grid-cols-2 gap-3">
+                                            ${activeLoc.rooms.map(r => html`
+                                                <button onClick=${() => setActiveCam(r.id)} 
+                                                    class="min-w-[100px] lg:min-w-0 p-4 border-2 font-black text-xs transition-all active:scale-90 ${activeCam === r.id ? 'bg-green-900 border-green-400 text-white shadow-[0_0_10px_green]' : 'border-green-900 text-green-900 hover:border-green-700'}">
+                                                    ${r.id}
+                                                </button>
+                                            `)}
+                                        </div>
+                                    </div>
+                                </div>
+                            `}
+
+                            ${view === 'data' && html`
+                                <div class="p-8 md:p-16 animate-in fade-in h-full overflow-y-auto max-w-5xl">
+                                    <h2 class="text-5xl md:text-7xl font-black uppercase italic mb-10 text-green-500">Asset Data</h2>
+                                    <div class="space-y-6">
+                                        ${activeLoc.animatronics.map(a => {
+                                            const s = a.dynamic ? getDaycareState() : a;
+                                            return html`
+                                                <div class="border-2 border-green-900/50 p-6 flex items-center gap-8 bg-zinc-950/50 transition-all hover:bg-zinc-900/50">
+                                                    <div class="text-6xl shrink-0" style="color: ${s.color}">${s.icon}</div>
+                                                    <div>
+                                                        <div class="font-black text-3xl uppercase italic mb-1" style="color: ${s.color}">${s.name}</div>
+                                                        <div class="text-sm text-green-800 font-bold uppercase tracking-widest opacity-80">
+                                                            Protocol: <span class="text-green-600">"${s.protocol || a.protocol}"</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            `;
+                                        })}
+                                    </div>
+                                </div>
+                            `}
+                        </main>
+                    </div>
+
+                    <!-- Footer Info -->
+                    <footer class="h-8 bg-black border-t border-green-900 flex items-center justify-between px-6 text-[10px] uppercase tracking-[0.4em] font-bold text-green-900 shrink-0">
+                        <div class="truncate mr-8">Network_${activeLoc.id.toUpperCase()} // Local Access Authorized</div>
+                        <div class="animate-pulse hidden sm:block">Faz-Connect v4.2.0</div>
+                    </footer>
+                </div>
+            `;
+        }
+
+        render(html`<${App} />`, document.getElementById('app'));
+    </script>
+</body>
+</html>
 
